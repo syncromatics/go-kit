@@ -11,13 +11,24 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+var (
+	streamingCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "grpc_server_active_strams",
+		Help: "The total number of streams connected to the service",
+	}, []string{
+		"grpc_type",
+		"grpc_service",
+		"grpc_method",
+	})
+)
+
 type timingWrapper struct {
 	stream   grpc.ServerStream
 	ctx      context.Context
 	cancel   func()
 	timeout  time.Duration
 	received chan struct{}
-	metrics  prometheus.Gauge
+	labels   prometheus.Labels
 }
 
 func newTimingWrapper(stream grpc.ServerStream, timeout time.Duration, serviceName, serviceMethod string) *timingWrapper {
@@ -36,17 +47,13 @@ func newTimingWrapper(stream grpc.ServerStream, timeout time.Duration, serviceNa
 		cancel:   cancel,
 		timeout:  timeout,
 		received: received,
-		metrics: promauto.NewGauge(prometheus.GaugeOpts{
-			Name:        "grpc_server_active_strams",
-			Help:        "The total number of streams connected to the service",
-			ConstLabels: labels,
-		}),
+		labels:   labels,
 	}
 }
 
 func (w *timingWrapper) Watch() {
-	w.metrics.Inc()
-	defer w.metrics.Dec()
+	streamingCount.With(w.labels).Inc()
+	defer streamingCount.With(w.labels).Dec()
 
 	for {
 		timeout := time.NewTimer(w.timeout)
