@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package gokit.ping.v1;
+
+option csharp_namespace = "GoKit.Ping.V1";
+option go_package = "pingv1";
+
+service PingAPI { rpc Ping(PingRequest) returns (PingResponse); }
+
+message PingRequest {}
+
+message PingResponse {}
