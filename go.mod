@@ -5,6 +5,7 @@ go 1.13
 require (
 	docker.io/go-docker v1.0.0
 	github.com/Shopify/sarama v1.24.1
+	github.com/denisenkom/go-mssqldb v0.0.0-20190515213511-eb9f6a1743f3
 	github.com/golang-migrate/migrate/v4 v4.8.0
 	github.com/golang/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
