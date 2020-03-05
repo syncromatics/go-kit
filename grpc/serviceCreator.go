@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	jaegerClient "github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go/thrift-gen/sampling"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -32,6 +33,7 @@ type Settings struct {
 	DefaultUDPSpanServerPort   string
 	ServerName                 string
 	BiDirectionalStreamTimeout time.Duration
+	Sampler                    jaegerClient.Sampler
 }
 
 // CreateServer will create a grpc server with tracing, prometheus stats, and logging
@@ -51,8 +53,18 @@ func CreateServer(s *Settings) *grpc.Server {
 		panic(err)
 	}
 
+	sampler := s.Sampler
+	if sampler == nil {
+		sampler = jaegerClient.NewPerOperationSampler(jaegerClient.PerOperationSamplerParams{
+			Strategies: &sampling.PerOperationSamplingStrategies{
+				DefaultSamplingProbability:       0.1,
+				DefaultLowerBoundTracesPerSecond: 1.0,
+			},
+		})
+	}
+
 	tracer, _ := jaegerClient.NewTracer(s.ServerName,
-		jaegerClient.NewConstSampler(false),
+		sampler,
 		jaegerClient.NewRemoteReporter(transport))
 
 	opentracing.SetGlobalTracer(tracer)
