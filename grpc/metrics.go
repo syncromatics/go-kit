@@ -16,7 +16,7 @@ func newServiceMetrics(serviceName string) serviceMetrics {
 
 	return serviceMetrics{
 		activeStreams: promauto.NewGauge(prometheus.GaugeOpts{
-			Name:        "grpc_server_active_strams",
+			Name:        "grpc_server_active_streams",
 			Help:        "The total number of streams connected to the service",
 			ConstLabels: labels,
 		}),

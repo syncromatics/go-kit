@@ -13,7 +13,7 @@ import (
 
 var (
 	streamingCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "grpc_server_active_strams",
+		Name: "grpc_server_active_streams",
 		Help: "The total number of streams connected to the service",
 	}, []string{
 		"grpc_type",
