@@ -1,3 +1,7 @@
+build:
+	go vet ./...
+	go build ./...
+
 generate:
 	mkdir -p internal/protos
 	protoc -I docs/protos \
