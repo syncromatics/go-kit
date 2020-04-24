@@ -47,7 +47,7 @@ func SetupRabbitMQ(testName string) (string, error) {
 
 	removeRabbitMQContainer(cli, testName)
 
-	containerName := getContainerName(testName)
+	containerName := fmt.Sprintf("%s_rabbitmq", testName)
 	create, err := cli.ContainerCreate(context.Background(), &config, &hostConfig, &networkConfig, containerName)
 	if err != nil {
 		return "", err
