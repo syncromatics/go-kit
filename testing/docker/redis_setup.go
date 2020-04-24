@@ -42,7 +42,7 @@ func SetupRedis(testName string) (*goredis.Options, error) {
 	}
 
 	config := container.Config{
-		Image: postgresImage,
+		Image: redisImage,
 	}
 	hostConfig := container.HostConfig{}
 	networkConfig := network.NetworkingConfig{}
