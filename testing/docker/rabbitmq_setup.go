@@ -97,7 +97,7 @@ func waitForRabbitMQToBeReady(client *client.Client, id string) (string, error) 
 	}
 
 	ip := inspect.NetworkSettings.IPAddress
-	url := fmt.Sprintf("aqmp://guest:guest@%s:5672", ip)
+	url := fmt.Sprintf("amqp://guest:guest@%s:5672", ip)
 
 	return url, nil
 }
