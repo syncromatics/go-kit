@@ -164,9 +164,15 @@ func HostMetrics(ctx context.Context, port int) func() error {
 
 // WaitTillServiceIsAvailable uses the ping service to wait till a grpc server is available
 func WaitTillServiceIsAvailable(host string, port int, duration time.Duration) error {
+	endpoint := fmt.Sprintf("%s:%d", host, port)
+	return WaitForServiceToBeOnline(endpoint, duration)
+}
+
+// WaitForServiceToBeOnline uses the ping service to wait for a grpc server to be available.
+func WaitForServiceToBeOnline(endpoint string, duration time.Duration) error {
 	start := time.Now()
 	for time.Now().Sub(start) < duration {
-		conn, err := grpc.Dial(fmt.Sprintf("%s:%d", host, port), grpc.WithInsecure())
+		conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 		if err != nil {
 			continue
 		}
