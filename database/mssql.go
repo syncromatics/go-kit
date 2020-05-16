@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"time"
 
-	mssqldb "github.com/denisenkom/go-mssqldb"
 	"github.com/pkg/errors"
 )
 
@@ -21,8 +20,6 @@ type MSSqlSettings struct {
 
 // GetDB will return a database instance from the settings
 func (ds *MSSqlSettings) GetDB() (*sql.DB, error) {
-	var _ = mssqldb.Decimal{}
-
 	query := url.Values{}
 	query.Add("app name", ds.AppName)
 
