@@ -52,21 +52,25 @@ func (gw *ProcessGroup) Wait() error {
 
 	log.Info("started process")
 
-	select {
-	case sig := <-signals:
-		log.Debug("caught signal", "signal", sig)
-	case <-gw.ctx.Done():
-		log.Debug("cancelled context")
+	errs := make(chan error)
+	defer close(errs)
+	go func(group *errgroup.Group, ctx context.Context) {
+		err := group.Wait()
+		errs <- err
+	}(gw.group, gw.ctx)
+
+	for {
+		select {
+		case sig := <-signals:
+			log.Debug("caught signal", "signal", sig)
+			gw.cancel()
+		case <-gw.ctx.Done():
+			log.Debug("cancelled context")
+			err := <-errs
+			return err
+		case err := <-errs:
+			log.Debug("process group wait completed")
+			return err
+		}
 	}
-
-	log.Info("stopping process")
-
-	gw.cancel()
-
-	err := gw.group.Wait()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

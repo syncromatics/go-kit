@@ -30,6 +30,17 @@ func Test_ProcessGroup_Success(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func Test_ProcessGroup_SuccessWithoutContextCancellation(t *testing.T) {
+	group := cmd.NewProcessGroup(context.Background())
+
+	group.Go(func() error {
+		return nil
+	})
+
+	err := group.Wait()
+	assert.Nil(t, err)
+}
+
 func Test_ProcessGroup_Failure(t *testing.T) {
 	ctx := context.Background()
 	group := cmd.NewProcessGroup(ctx)
