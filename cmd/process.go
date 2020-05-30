@@ -6,8 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/syncromatics/go-kit/log"
-
 	"golang.org/x/sync/errgroup"
 )
 
@@ -50,8 +48,6 @@ func (gw *ProcessGroup) Wait() error {
 
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Info("started process")
-
 	errs := make(chan error)
 	defer close(errs)
 	go func(group *errgroup.Group, ctx context.Context) {
@@ -61,15 +57,12 @@ func (gw *ProcessGroup) Wait() error {
 
 	for {
 		select {
-		case sig := <-signals:
-			log.Debug("caught signal", "signal", sig)
+		case <-signals:
 			gw.cancel()
 		case <-gw.ctx.Done():
-			log.Debug("cancelled context")
 			err := <-errs
 			return err
 		case err := <-errs:
-			log.Debug("process group wait completed")
 			return err
 		}
 	}
