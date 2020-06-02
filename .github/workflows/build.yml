@@ -15,7 +15,7 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/master'
     steps:
-      - uses: syncromatics/gogitver-action@v0.0.1
+      - uses: syncromatics/gogitver-action@v0.0.3
         id: gogitver
 
       - name: Create Release
