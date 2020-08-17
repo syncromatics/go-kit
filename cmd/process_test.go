@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/syncromatics/go-kit/cmd"
+	"github.com/syncromatics/go-kit/v2/cmd"
 
 	"github.com/stretchr/testify/assert"
 )

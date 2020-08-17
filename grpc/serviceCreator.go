@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	pingv1 "github.com/syncromatics/go-kit/internal/protos/gokit/ping/v1"
+	pingv1 "github.com/syncromatics/go-kit/v2/internal/protos/gokit/ping/v1"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
