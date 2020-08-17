@@ -14,6 +14,7 @@ import (
 // PostgresDatabaseSettings are the settings for a timescale database
 type PostgresDatabaseSettings struct {
 	Host     string
+	Port     int
 	User     string
 	Password string
 	Name     string
@@ -99,10 +100,18 @@ func (ds *PostgresDatabaseSettings) MigrateUpWithStatik(subdirectory string) err
 	return nil
 }
 
+func (ds *PostgresDatabaseSettings) getPort() int {
+	if ds.Port != 0 {
+		return ds.Port
+	}
+
+	return 5432
+}
+
 func (ds *PostgresDatabaseSettings) getConnectionStringWithoutDatabase() string {
-	return fmt.Sprintf("user=%s password=%s host=%s sslmode=disable", ds.User, ds.Password, ds.Host)
+	return fmt.Sprintf("user=%s password=%s host=%s port=%d sslmode=disable", ds.User, ds.Password, ds.Host, ds.getPort())
 }
 
 func (ds *PostgresDatabaseSettings) getConnectionStringWithDatabase() string {
-	return fmt.Sprintf("user=%s password=%s host=%s dbname=%s sslmode=disable", ds.User, ds.Password, ds.Host, ds.Name)
+	return fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=disable", ds.User, ds.Password, ds.Host, ds.getPort(), ds.Name)
 }

@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/syncromatics/go-kit/database"
+	"github.com/docker/go-connections/nat"
+	"github.com/phayes/freeport"
+	"github.com/syncromatics/go-kit/v2/database"
 
 	client "docker.io/go-docker"
 	"docker.io/go-docker/api/types"
@@ -19,7 +21,7 @@ var (
 	postgresImage = "postgres:10.2"
 )
 
-// SetupPostgresDatabase sets up a timescale database
+// SetupPostgresDatabase sets up a postgres database
 func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabaseSettings, error) {
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
@@ -42,6 +44,11 @@ func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabase
 		return nil, nil, err
 	}
 
+	dbPort, err := freeport.GetFreePort()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	config := container.Config{
 		Image: postgresImage,
 		Env: []string{
@@ -50,9 +57,13 @@ func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabase
 			"POSTGRES_DB=test",
 		},
 	}
-
-	hostConfig := container.HostConfig{}
-
+	hostConfig := container.HostConfig{
+		PortBindings: nat.PortMap{
+			"5432/tcp": []nat.PortBinding{
+				{HostPort: fmt.Sprintf("%d/tcp", dbPort)},
+			},
+		},
+	}
 	networkConfig := network.NetworkingConfig{}
 
 	removePostgresContainer(cli, testName)
@@ -75,7 +86,7 @@ func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabase
 		return nil, nil, err
 	}
 
-	db, settings, err := waitForPostgresToBeReady(cli, create.ID)
+	db, settings, err := waitForPostgresToBeReady(dbPort)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,20 +112,16 @@ func removePostgresContainer(client *client.Client, testName string) {
 	client.ContainerRemove(context.Background(), containerName, types.ContainerRemoveOptions{Force: true})
 }
 
-func waitForPostgresToBeReady(client *client.Client, id string) (*sql.DB, *database.PostgresDatabaseSettings, error) {
-	inspect, err := client.ContainerInspect(context.Background(), id)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func waitForPostgresToBeReady(dbPort int) (*sql.DB, *database.PostgresDatabaseSettings, error) {
 	settings := database.PostgresDatabaseSettings{
-		Host:     inspect.NetworkSettings.IPAddress,
+		Host:     "localhost",
+		Port:     dbPort,
 		User:     "postgres",
 		Password: "postgres",
 		Name:     "test",
 	}
 
-	err = settings.WaitForDatabaseToBeOnline(60)
+	err := settings.WaitForDatabaseToBeOnline(60)
 	if err != nil {
 		return nil, nil, err
 	}
