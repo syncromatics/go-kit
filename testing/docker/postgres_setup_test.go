@@ -23,3 +23,23 @@ func ExampleSetupPostgresDatabase() {
 	docker.TeardownPostgresDatabase("test")
 	// Output:
 }
+
+func ExampleSetupTimescaleDatabase() {
+	db, _, err := docker.SetupTimescaleDatabase("test")
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	docker.TeardownTimescaleDatabase("test")
+	// Output:
+}

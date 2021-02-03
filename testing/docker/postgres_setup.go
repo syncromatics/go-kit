@@ -18,18 +18,28 @@ import (
 )
 
 var (
-	postgresImage = "postgres:10.2"
+	postgresImage  = "postgres:10.2"
+	timescaleImage = "timescale/timescaledb:0.10.0-pg10"
 )
+
+// SetupTimescaleDatabase sets up a timescale database
+func SetupTimescaleDatabase(testName string) (*sql.DB, *database.PostgresDatabaseSettings, error) {
+	return setupPgDatabase(testName, timescaleImage)
+}
 
 // SetupPostgresDatabase sets up a postgres database
 func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabaseSettings, error) {
+	return setupPgDatabase(testName, postgresImage)
+}
+
+func setupPgDatabase(testName string, imageName string) (*sql.DB, *database.PostgresDatabaseSettings, error) {
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := cli.ImagePull(context.Background(), postgresImage, types.ImagePullOptions{})
+	r, err := cli.ImagePull(context.Background(), imageName, types.ImagePullOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -50,7 +60,7 @@ func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabase
 	}
 
 	config := container.Config{
-		Image: postgresImage,
+		Image: imageName,
 		Env: []string{
 			"POSTGRES_PASSWORD=postgres",
 			"POSTGRES_USER=postgres",
@@ -96,6 +106,15 @@ func SetupPostgresDatabase(testName string) (*sql.DB, *database.PostgresDatabase
 
 // TeardownPostgresDatabase tears down the postgres db
 func TeardownPostgresDatabase(testName string) error {
+	return teardownPgDatabase(testName)
+}
+
+// TeardownTimescaleDatabase tears down the timescale db
+func TeardownTimescaleDatabase(testName string) error {
+	return teardownPgDatabase(testName)
+}
+
+func teardownPgDatabase(testName string) error {
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
 	if err != nil {
