@@ -20,8 +20,12 @@ var (
 	rabbitMqImage = "rabbitmq:3.7.7-management"
 )
 
-// SetupRabbitMQ sets up a RabbitMQ broker
 func SetupRabbitMQ(testName string) (string, error) {
+	return SetupRabbitMQWithTimeOut(testName, 30*time.Second)
+}
+
+// SetupRabbitMQ sets up a RabbitMQ broker
+func SetupRabbitMQWithTimeOut(testName string, timeOut time.Duration) (string, error) {
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
 	if err != nil {
@@ -97,7 +101,7 @@ rabbitmq_node_is_healthy.
 		return "", err
 	}
 
-	url, err := waitForRabbitMQToBeReady(cli, create.ID, amqpPort)
+	url, err := waitForRabbitMQToBeReady(cli, create.ID, amqpPort, timeOut)
 	if err != nil {
 		return "", err
 	}
@@ -122,8 +126,8 @@ func removeRabbitMQContainer(client *client.Client, testName string) {
 	client.ContainerRemove(context.Background(), containerName, types.ContainerRemoveOptions{Force: true})
 }
 
-func waitForRabbitMQToBeReady(client *client.Client, id string, amqpPort int) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func waitForRabbitMQToBeReady(client *client.Client, id string, amqpPort int, timeOut time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeOut)
 
 	for {
 		select {
