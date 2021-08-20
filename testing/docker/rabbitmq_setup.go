@@ -20,8 +20,12 @@ var (
 	rabbitMqImage = "rabbitmq:3.7.7-management"
 )
 
+func SetupRabbitMQ(testName string) (string, error) {
+	return SetupRabbitMQWithTimeOut(testName, 30*time.Second)
+}
+
 // SetupRabbitMQ sets up a RabbitMQ broker
-func SetupRabbitMQ(testName string, timeOut time.Duration) (string, error) {
+func SetupRabbitMQWithTimeOut(testName string, timeOut time.Duration) (string, error) {
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
 	if err != nil {
