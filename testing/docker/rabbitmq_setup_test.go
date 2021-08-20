@@ -2,12 +2,14 @@ package docker_test
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/syncromatics/go-kit/v2/testing/docker"
 )
 
 func ExampleSetupRabbitMQ() {
-	amqpURL, err := docker.SetupRabbitMQ("test")
+	timeOut := 90 * time.Second
+	amqpURL, err := docker.SetupRabbitMQ("test", timeOut)
 	if err != nil {
 		panic(err)
 	}
