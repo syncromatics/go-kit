@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// PostgresDatabaseSettings are the settings for a timescale database
+// PostgresDatabaseSettings are the settings for a postgres database
 type PostgresDatabaseSettings struct {
 	Host     string
 	Port     int
