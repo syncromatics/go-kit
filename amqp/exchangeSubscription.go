@@ -122,8 +122,6 @@ type Message struct {
 //
 // Any messages that are not explicitly Acked or Nacked by this consumer before the connection is terminated will be automatically requeued.
 func (es *ExchangeSubscription) Consume(outerCtx context.Context) (<-chan *Message, error) {
-	es.activeConsumers.Inc()
-
 	channel, err := es.connection.Channel()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open channel for consumer")
@@ -138,6 +136,7 @@ func (es *ExchangeSubscription) Consume(outerCtx context.Context) (<-chan *Messa
 	ctx, cancel := context.WithCancel(outerCtx)
 	messages := make(chan *Message)
 	go func() {
+		es.activeConsumers.Inc()
 		defer es.activeConsumers.Dec()
 		for {
 			select {
