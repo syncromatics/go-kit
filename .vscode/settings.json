@@ -1,3 +1,4 @@
 {
-  "go.testTimeout": "120s"
+  "go.testTimeout": "120s",
+  "cSpell.words": ["amqp"]
 }

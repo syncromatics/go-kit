@@ -13,6 +13,7 @@ require (
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/golang-migrate/migrate/v4 v4.8.0
 	github.com/golang/protobuf v1.3.2
+	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/klauspost/cpuid v1.2.3 // indirect
@@ -22,6 +23,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/rakyll/statik v0.1.6
+	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.4.0
 	github.com/syncromatics/proto-schema-registry v0.7.2
 	github.com/uber/jaeger-client-go v2.22.1+incompatible

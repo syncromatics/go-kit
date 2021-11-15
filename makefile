@@ -2,6 +2,9 @@ build:
 	go vet ./...
 	go build ./...
 
+test: build
+	go test ./... -race -v -p 1
+
 generate:
 	mkdir -p internal/protos
 	protoc -I docs/protos \
