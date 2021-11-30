@@ -52,3 +52,21 @@ func (p *ExchangePublisher) Publish(exchangeName string, headers map[string]stri
 
 	return nil
 }
+
+// PublishWithRoutingKey publishes a message to the given exchange, with a routing key to specify the queue
+func (p *ExchangePublisher) PublishWithRoutingKey(exchangeName string, routingKey string, body []byte) error {
+	channel, err := p.connection.Channel()
+	if err != nil {
+		return errors.Wrap(err, "failed to open channel to broker")
+	}
+	defer channel.Close()
+
+	err = channel.Publish(exchangeName, routingKey, false, false, amqp.Publishing{
+		Body: body,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to publish message")
+	}
+
+	return nil
+}
