@@ -43,7 +43,7 @@ func (gw *ProcessGroup) Go(f func() error) {
 // Wait blocks until all function calls from the Go method have returned, then
 // returns the first non-nil error (if any) from them.
 func (gw *ProcessGroup) Wait() error {
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	defer close(signals)
 
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
