@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ProcessGroup_Success(t *testing.T) {
+func Test_ProcessGroup_Go_Success(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	group := cmd.NewProcessGroup(ctx)
 
@@ -30,6 +30,25 @@ func Test_ProcessGroup_Success(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func Test_ProcessGroup_Start_Success(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	group := cmd.NewProcessGroup(ctx)
+
+	group.Start(func(argCtx context.Context) error {
+		cancel()
+
+		select {
+		case <-argCtx.Done():
+			return nil
+		case <-time.After(3 * time.Second):
+			return errors.New("argument context not derived from input context")
+		}
+	})
+
+	err := group.Wait()
+	assert.Nil(t, err)
+}
+
 func Test_ProcessGroup_SuccessWithoutContextCancellation(t *testing.T) {
 	group := cmd.NewProcessGroup(context.Background())
 
@@ -41,7 +60,7 @@ func Test_ProcessGroup_SuccessWithoutContextCancellation(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Test_ProcessGroup_Failure(t *testing.T) {
+func Test_ProcessGroup_Go_Failure(t *testing.T) {
 	ctx := context.Background()
 	group := cmd.NewProcessGroup(ctx)
 
@@ -54,5 +73,19 @@ func Test_ProcessGroup_Failure(t *testing.T) {
 
 	err := group.Wait()
 	assert.Equal(t, "intentional failure", err.Error())
+}
 
+func Test_ProcessGroup_Start_Failure(t *testing.T) {
+	ctx := context.Background()
+	group := cmd.NewProcessGroup(ctx)
+
+	group.Start(func(context.Context) error {
+		return nil
+	})
+	group.Start(func(context.Context) error {
+		return errors.New("intentional failure")
+	})
+
+	err := group.Wait()
+	assert.Equal(t, "intentional failure", err.Error())
 }

@@ -28,22 +28,32 @@ func NewProcessGroup(outerCtx context.Context) *ProcessGroup {
 }
 
 // Context returns the context used by the ProcessGroup
-func (gw *ProcessGroup) Context() context.Context {
-	return gw.ctx
+func (pg *ProcessGroup) Context() context.Context {
+	return pg.ctx
 }
 
 // Go calls the given function in a new goroutine.
 //
 // The first call to return a non-nil error cancels the group; its error will be
 // returned by Wait.
-func (gw *ProcessGroup) Go(f func() error) {
-	gw.group.Go(f)
+func (pg *ProcessGroup) Go(f func() error) {
+	pg.group.Go(f)
+}
+
+// Start calls the given function in a new goroutine and passes this group's context to it.
+//
+// The first call to return a non-nil error cancels the group; its error will be
+// returned by Wait.
+func (pg *ProcessGroup) Start(f func(context.Context) error) {
+	pg.Go(func() error {
+		return f(pg.Context())
+	})
 }
 
 // Wait blocks until all function calls from the Go method have returned, then
 // returns the first non-nil error (if any) from them.
-func (gw *ProcessGroup) Wait() error {
-	signals := make(chan os.Signal)
+func (pg *ProcessGroup) Wait() error {
+	signals := make(chan os.Signal, 1)
 	defer close(signals)
 
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -53,13 +63,13 @@ func (gw *ProcessGroup) Wait() error {
 	go func(group *errgroup.Group, ctx context.Context) {
 		err := group.Wait()
 		errs <- err
-	}(gw.group, gw.ctx)
+	}(pg.group, pg.ctx)
 
 	for {
 		select {
 		case <-signals:
-			gw.cancel()
-		case <-gw.ctx.Done():
+			pg.cancel()
+		case <-pg.ctx.Done():
 			err := <-errs
 			return err
 		case err := <-errs:
