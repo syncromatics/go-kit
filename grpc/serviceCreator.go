@@ -34,12 +34,21 @@ type Settings struct {
 	ServerName                 string
 	BiDirectionalStreamTimeout time.Duration
 	Sampler                    jaegerClient.Sampler
+	LogLevel                   string // Empty keeps the default warning threshold.
+	DisableStacktrace          bool   // Disable zap's caller stack on error-level gRPC logs.
 }
 
 // CreateServer will create a grpc server with tracing, prometheus stats, and logging
 func CreateServer(s *Settings) *grpc.Server {
 	logConfig := zap.NewProductionConfig()
-	logConfig.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
+	logLevel := zap.WarnLevel
+	if s.LogLevel != "" {
+		if err := logLevel.UnmarshalText([]byte(s.LogLevel)); err != nil {
+			panic(fmt.Errorf("invalid gRPC log level %q: %w", s.LogLevel, err))
+		}
+	}
+	logConfig.Level = zap.NewAtomicLevelAt(logLevel)
+	logConfig.DisableStacktrace = s.DisableStacktrace
 	logger, _ := logConfig.Build()
 
 	if s.BiDirectionalStreamTimeout == 0 {
