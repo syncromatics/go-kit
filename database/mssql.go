@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"time"
 
+	// Imports the sqlserver driver
+	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/pkg/errors"
 )
 

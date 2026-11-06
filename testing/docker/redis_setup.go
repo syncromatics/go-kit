@@ -10,8 +10,10 @@ import (
 	"docker.io/go-docker/api/types"
 	"docker.io/go-docker/api/types/container"
 	"docker.io/go-docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	goredis "github.com/go-redis/redis"
-	"github.com/syncromatics/go-kit/redis"
+	"github.com/phayes/freeport"
+	"github.com/syncromatics/go-kit/v2/redis"
 )
 
 var (
@@ -41,10 +43,21 @@ func SetupRedis(testName string) (*goredis.Options, error) {
 		return nil, err
 	}
 
-	config := container.Config{
-		Image: postgresImage,
+	dbPort, err := freeport.GetFreePort()
+	if err != nil {
+		return nil, err
 	}
-	hostConfig := container.HostConfig{}
+
+	config := container.Config{
+		Image: redisImage,
+	}
+	hostConfig := container.HostConfig{
+		PortBindings: nat.PortMap{
+			"6379/tcp": []nat.PortBinding{
+				{HostPort: fmt.Sprintf("%d/tcp", dbPort)},
+			},
+		},
+	}
 	networkConfig := network.NetworkingConfig{}
 
 	removeRedisContainer(cli, testName)
@@ -67,7 +80,7 @@ func SetupRedis(testName string) (*goredis.Options, error) {
 		return nil, err
 	}
 
-	opts, err := waitForRedisToBeReady(cli, create.ID)
+	opts, err := waitForRedisToBeReady(cli, create.ID, dbPort)
 	if err != nil {
 		return nil, err
 	}
@@ -96,19 +109,14 @@ func getContainerName(testName string) string {
 	return fmt.Sprintf("%s_redis", testName)
 }
 
-func waitForRedisToBeReady(client *client.Client, id string) (*goredis.Options, error) {
-	inspect, err := client.ContainerInspect(context.Background(), id)
-	if err != nil {
-		return nil, err
-	}
-
-	ip := inspect.NetworkSettings.IPAddress
-	url := fmt.Sprintf("redis://%s:6379", ip)
+func waitForRedisToBeReady(client *client.Client, id string, dbPort int) (*goredis.Options, error) {
+	url := fmt.Sprintf("redis://localhost:%d", dbPort)
 
 	opts, err := goredis.ParseURL(url)
 	if err != nil {
 		return nil, err
 	}
+
 	err = redis.WaitForRedisToBeOnline(opts, 60)
 	if err != nil {
 		return nil, err

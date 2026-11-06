@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"time"
@@ -12,19 +13,30 @@ import (
 	"docker.io/go-docker/api/types"
 	"docker.io/go-docker/api/types/container"
 	"docker.io/go-docker/api/types/network"
+	"github.com/docker/go-connections/nat"
+	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 )
 
 var (
-	databaseImage = "mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04"
+	mssqlImage = "mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04"
 )
 
 // MSSqlDatabaseSettings is the settings for the database
 type MSSqlDatabaseSettings struct {
 	Host     string
+	Port     int
 	User     string
 	Password string
 	Name     *string
+}
+
+func (ds *MSSqlDatabaseSettings) getPort() int {
+	if ds.Port != 0 {
+		return ds.Port
+	}
+
+	return 1433
 }
 
 // GetDB will return a database instance from the settings
@@ -38,7 +50,7 @@ func (ds *MSSqlDatabaseSettings) GetDB() (*sql.DB, error) {
 	u := &url.URL{
 		Scheme:   "sqlserver",
 		User:     url.UserPassword(ds.User, ds.Password),
-		Host:     fmt.Sprintf("%s:%d", ds.Host, 1433),
+		Host:     fmt.Sprintf("%s:%d", ds.Host, ds.getPort()),
 		RawQuery: query.Encode(),
 	}
 	db, err := sql.Open("sqlserver", u.String())
@@ -78,9 +90,9 @@ type DatabaseSetup struct {
 	DatabaseName  *string
 }
 
-// SetupAdminDatabase will setup a test database
-func SetupAdminDatabase(setup DatabaseSetup) (*MSSqlDatabaseSettings, error) {
-	containerName := fmt.Sprintf("%s_database_test", setup.TestName)
+// SetupMSSqlDatabase sets up a Microsoft SQL Server database
+func SetupMSSqlDatabase(setup DatabaseSetup) (*MSSqlDatabaseSettings, error) {
+	containerName := fmt.Sprintf("%s_mssql", setup.TestName)
 
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
@@ -88,17 +100,49 @@ func SetupAdminDatabase(setup DatabaseSetup) (*MSSqlDatabaseSettings, error) {
 		return nil, err
 	}
 
-	image := databaseImage
+	image := mssqlImage
 	if setup.DatabaseImage != nil {
 		image = *setup.DatabaseImage
 	}
 
-	config := container.Config{
-		Image: image,
+	r, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
+	if err != nil {
+		return nil, err
 	}
 
-	hostConfig := container.HostConfig{}
+	_, err = ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
 
+	err = r.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	env := []string{
+		"ACCEPT_EULA=yes",
+	}
+	if setup.UserName == "sa" {
+		env = append(env, fmt.Sprintf("SA_PASSWORD=%s", setup.Password))
+	}
+
+	dbPort, err := freeport.GetFreePort()
+	if err != nil {
+		return nil, err
+	}
+
+	config := container.Config{
+		Image: image,
+		Env:   env,
+	}
+	hostConfig := container.HostConfig{
+		PortBindings: nat.PortMap{
+			"1433/tcp": []nat.PortBinding{
+				{HostPort: fmt.Sprintf("%d/tcp", dbPort)},
+			},
+		},
+	}
 	networkConfig := network.NetworkingConfig{}
 
 	removeContainer(cli, containerName)
@@ -120,7 +164,7 @@ func SetupAdminDatabase(setup DatabaseSetup) (*MSSqlDatabaseSettings, error) {
 		return nil, err
 	}
 
-	settings, err := waitForDatabaseToBeReady(cli, create.ID, setup)
+	settings, err := waitForDatabaseToBeReady(cli, create.ID, setup, dbPort)
 	if err != nil {
 		return nil, err
 	}
@@ -128,69 +172,36 @@ func SetupAdminDatabase(setup DatabaseSetup) (*MSSqlDatabaseSettings, error) {
 	return settings, nil
 }
 
-// TeardownDatabase will teardown the test database
-func TeardownDatabase(testName string) {
+// TeardownMSSqlDatabase tears down the Microsoft SQL Server database
+func TeardownMSSqlDatabase(testName string) error {
 	os.Setenv("DOCKER_API_VERSION", "1.35")
 	cli, err := client.NewEnvClient()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	removeContainer(cli, fmt.Sprintf("%s_database_test", testName))
+	removeContainer(cli, fmt.Sprintf("%s_mssql", testName))
+
+	return nil
 }
 
 func removeContainer(client *client.Client, name string) {
 	client.ContainerRemove(context.Background(), name, types.ContainerRemoveOptions{Force: true})
 }
 
-func waitForDatabaseToBeReady(client *client.Client, id string, setup DatabaseSetup) (*MSSqlDatabaseSettings, error) {
-	inspect, err := client.ContainerInspect(context.Background(), id)
-	if err != nil {
-		return nil, err
-	}
-
+func waitForDatabaseToBeReady(client *client.Client, id string, setup DatabaseSetup, dbPort int) (*MSSqlDatabaseSettings, error) {
 	settings := &MSSqlDatabaseSettings{
-		Host:     inspect.NetworkSettings.IPAddress,
+		Host:     "localhost",
+		Port:     dbPort,
 		User:     setup.UserName,
 		Password: setup.Password,
 		Name:     setup.DatabaseName,
 	}
 
-	err = waitForDatabaseToBeOnline(60, settings)
+	err := settings.WaitForDatabaseToBeOnline(60)
 	if err != nil {
 		return nil, err
 	}
 
 	return settings, nil
-}
-
-func waitForDatabaseToBeOnline(secondsToWait int, settings *MSSqlDatabaseSettings) error {
-	query := url.Values{}
-	query.Add("app name", "util")
-
-	if settings.Name != nil {
-		query.Add("database", *settings.Name)
-	}
-
-	u := &url.URL{
-		Scheme:   "sqlserver",
-		User:     url.UserPassword(settings.User, settings.Password),
-		Host:     fmt.Sprintf("%s:%d", settings.Host, 1433),
-		RawQuery: query.Encode(),
-	}
-
-	db, err := sql.Open("sqlserver", u.String())
-	if err != nil {
-		return errors.Wrap(err, "opening sql failed")
-	}
-
-	for i := 0; i < secondsToWait; i++ {
-		err = db.Ping()
-		if err == nil {
-			return nil
-		}
-		time.Sleep(1 * time.Second)
-	}
-
-	return err
 }

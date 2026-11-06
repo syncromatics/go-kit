@@ -1,13 +1,26 @@
-// Package log provides configurable logging. It will detect if the process is running
-// in kubernetes by searching for the "KUBERNETES_SERVICE_HOST" environment variable. If it
-// is running in kubernetes it will output logs to stdout using json. If it is not running in
-// kubernetes it will output logs in a standard single line readable format.
+// Package log provides configurable logging. It will detect if the process is
+// running in kubernetes by searching for the "KUBERNETES_SERVICE_HOST"
+// environment variable. If it is running in kubernetes it will output logs to
+// stdout using json. If it is not running in kubernetes it will output logs in
+// a standard single line readable format.
+//
+// Additionally, you can set a LOG_LEVEL environment value to any of the
+// following values, to retrieve only log levels from that level and above. The
+// default log level is INFO for running in kubernetes and DEBUG when not.
+//
+// FATAL
+// ERROR
+// WARN
+// INFO
+// DEBUG
 package log
 
 import (
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -22,6 +35,22 @@ func init() {
 		config = zap.NewProductionConfig()
 	} else {
 		config = zap.NewDevelopmentConfig()
+	}
+
+	logLevel, ok := os.LookupEnv("LOG_LEVEL")
+	if ok {
+		switch strings.ToLower(logLevel) {
+		case "debug":
+			config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+		case "info":
+			config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+		case "warn":
+			config.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+		case "error":
+			config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
+		case "fatal":
+			config.Level = zap.NewAtomicLevelAt(zapcore.FatalLevel)
+		}
 	}
 
 	l, _ := config.Build()
