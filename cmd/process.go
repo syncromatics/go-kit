@@ -54,7 +54,7 @@ func (pg *ProcessGroup) Start(f func(context.Context) error) {
 // returns the first non-nil error (if any) from them.
 func (pg *ProcessGroup) Wait() error {
 	signals := make(chan os.Signal, 1)
-	defer close(signals)
+	defer signal.Stop(signals)
 
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
